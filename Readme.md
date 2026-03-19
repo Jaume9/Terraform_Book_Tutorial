@@ -31,6 +31,9 @@ Since this code comes from a book about Terraform, the vast majority of the code
 For instructions on running the code, please consult the README in each folder, and, of course, the
 *[Terraform: Up and Running](http://www.terraformupandrunning.com)* book.
 
+## 1 use cmd variable entorno
+
+ $env:PATH += ';C:\Users\pe2756\terraform_1.14.7_windows_386'
 
 
 ## AWS Credentials Configuration (Persistent)
