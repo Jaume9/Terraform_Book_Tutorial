@@ -19,6 +19,7 @@ terraform {
 # Las credenciales se leen automáticamente de "az login" o variables de entorno ARM_*.
 provider "azurerm" {
   features {}
+  skip_provider_registration = true
 }
 
 # BLOQUE RESOURCE GROUP:
@@ -27,7 +28,7 @@ provider "azurerm" {
 # No existe equivalente obligatorio en AWS (allí los recursos pueden existir solos).
 resource "azurerm_resource_group" "app" {
   name     = "web-server-rg"
-  location = "West Europe"
+  location = "Spain Central"
 }
 
 # BLOQUE VIRTUAL NETWORK:
