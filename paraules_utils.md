@@ -11,7 +11,15 @@ Palabras que no entendia en las reuniones de daily's y en el libro.
 | **On-prem** (on premises) | Servidores fisicos que estan en las oficinas de la empresa, no en la nube. Lo contrario de cloud. |
 | **Core prod** | El nucleo del sistema en produccion, es decir, la parte mas critica que los usuarios reales estan usando ahora mismo. Tocar core prod sin cuidado puede tirar el servicio. |
 | **Cluster de servidores web** | Un grupo de varias maquinas que hacen lo mismo. Si una falla, las otras siguen respondiendo. Da alta disponibilidad. |
+| **Kubernetes** (k8s) | Plataforma open-source de orquestacion de contenedores. Se encarga de desplegar, escalar y gestionar automaticamente aplicaciones en contenedores (Docker). Es el estandar del sector para gestionar microservicios en produccion. |
 | **Cluster de Kubernetes** (k8s) | Un grupo de maquinas gestionadas por Kubernetes, que se encarga de arrancar, parar y escalar contenedores automaticamente. |
+| **AKS** (Azure Kubernetes Service) | Kubernetes gestionado por Azure. Azure se encarga del control plane (la parte de gestion) y tu solo administras los nodos de aplicacion. |
+| **Node Pool** | Grupo de nodos (maquinas virtuales) dentro de un cluster AKS que comparten la misma configuracion (SKU, OS, tamanyo). Se pueden tener varios node pools para distintos tipos de cargas de trabajo. |
+| **Pod** | La unidad minima en Kubernetes: un conjunto de uno o mas contenedores que corren juntos en el mismo nodo y comparten red y almacenamiento. |
+| **Namespace** (k8s) | Division logica dentro de un cluster Kubernetes para aislar recursos entre equipos, proyectos o entornos (ej: `dev`, `prod`, `monitoring`). |
+| **Ingress** (k8s) | Recurso de Kubernetes que gestiona el trafico HTTP/HTTPS entrante hacia los servicios del cluster. Hace de proxy inverso y enruta segun la URL. |
+| **Helm** | Gestor de paquetes para Kubernetes. Un "chart" de Helm es un paquete que contiene todos los manifiestos YAML necesarios para desplegar una aplicacion. |
+| **kubectl** | Herramienta de linea de comandos para interactuar con un cluster Kubernetes (ver pods, hacer deploys, ver logs, etc.). |
 | **Dispatcher** | Componente que recibe tareas o peticiones y las reparte entre los trabajadores disponibles. Como el maitre de un restaurante. |
 
 ---
