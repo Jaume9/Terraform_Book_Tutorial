@@ -511,64 +511,6 @@ resource "aws_autoscaling_group" "example" {
 
 ---
 
-### Solución 3: Blue/Green deployment
-
-Mantener **dos entornos** idénticos (blue = actual en prod, green = nuevo) y cambiar el tráfico de golpe.
-
-```hcl
-variable "active_env" {
-  description = "Entorno activo: blue o green"
-  type        = string
-  default     = "blue"
-}
-
-module "blue" {
-  source   = "../modules/webserver-cluster"
-  for_each = var.active_env == "blue" ? toset(["active"]) : toset([])
-  # config del cluster...
-}
-
-module "green" {
-  source   = "../modules/webserver-cluster"
-  for_each = var.active_env == "green" ? toset(["active"]) : toset([])
-  # config del cluster...
-}
-
-# El DNS apunta al entorno activo
-resource "aws_route53_record" "example" {
-  zone_id = data.aws_route53_zone.example.zone_id
-  name    = "app.example.com"
-  type    = "A"
-  records = var.active_env == "blue" ? [module.blue["active"].ip] : [module.green["active"].ip]
-  ttl     = 60
-}
-```
-
-**Flujo Blue/Green:**
-1. `active_env = "blue"` → el tráfico va a blue, green no existe
-2. Cambias `active_env = "green"` en una PR
-3. Terraform crea green, switch del DNS, luego destruye blue
-4. Para hacer rollback: basta con volver `active_env = "blue"`
-
----
-
-### `ignore_changes` — Evitar reemplazos no deseados
-
-Cuando un atributo cambia fuera de Terraform (ej: el CI/CD actualiza la imagen de un contenedor), evita que Terraform fuerce un reemplazo innecesario:
-
-```hcl
-resource "aws_instance" "example" {
-  ami           = var.ami_id
-  instance_type = "t3.micro"
-
-  lifecycle {
-    ignore_changes = [ami]
-    # Terraform ya no intentará actualizar la AMI en futuros plans
-  }
-}
-```
-
----
 
 ## Resumen rápido
 
@@ -584,8 +526,6 @@ resource "aws_instance" "example" {
 | Condicional dentro de un string/heredoc | `%{ if }...%{ endif }` |
 | Evitar downtime en updates simples | `lifecycle { create_before_destroy = true }` |
 | Evitar downtime con muchas instancias | ASG rolling + `min_elb_capacity` |
-| Switch instantáneo entre versiones | Blue/Green deployment |
-| No tocar un atributo en futuros plans | `lifecycle { ignore_changes = [...] }` |
 
 ---
 
@@ -862,52 +802,6 @@ resource "aws_launch_configuration" "example" {
 ```
 
 Truco: forzar recreación del ASG cuando cambia la `launch_configuration` incluyendo su nombre en el nombre del ASG.
-
----
-
-### Blue/Green deployment
-
-Mantener dos entornos idénticos (blue = actual, green = nuevo) y switchear el tráfico:
-
-```hcl
-variable "active_color" {
-  type    = string
-  default = "blue"  # cambiar a "green" para el switch
-}
-
-module "blue" {
-  source = "../modules/webserver-cluster"
-  count  = var.active_color == "blue" ? 1 : 0
-}
-
-module "green" {
-  source = "../modules/webserver-cluster"
-  count  = var.active_color == "green" ? 1 : 0
-}
-
-resource "aws_route53_record" "example" {
-  name = "api.example.com"
-  # apunta al módulo activo
-  records = var.active_color == "blue" ? [module.blue[0].ip] : [module.green[0].ip]
-}
-```
-
----
-
-### `ignore_changes` para evitar actualizaciones no deseadas
-
-Cuando hay atributos que cambian fuera de Terraform (ej: una imagen de contenedor actualizada por el CI/CD):
-
-```hcl
-resource "aws_instance" "example" {
-  ami           = var.ami_id
-  instance_type = "t3.micro"
-
-  lifecycle {
-    ignore_changes = [ami]  # Terraform no actualizará la AMI en futuros plans
-  }
-}
-```
 
 ---
 
