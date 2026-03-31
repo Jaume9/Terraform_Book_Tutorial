@@ -137,6 +137,52 @@ provider "aws" {
 
 
 
+## Estructura del repositorio
+
+```
+Terraform_Book_Tutorial/
+│
+├── Readme.md                          ← este fichero
+├── resum_caps.md                      ← resumen de lo crucial de cada capitulo (cap 0-4)
+├── terraform-commands.md              ← referencia rapida de todos los comandos de Terraform
+├── paraules_utils.md                  ← glosario de terminos tecnicos de las dailys
+│
+├── 00-preface/                        ← Hello World: primer despliegue en AWS y Azure
+│   ├── hello-world-aws/
+│   └── hello-world-azure/
+│
+├── 01-why-terraform/                  ← Por que usar Terraform vs otras herramientas
+│   ├── dependencies-example/          ← como Terraform gestiona dependencias entre recursos
+│   ├── web-server-aws/
+│   └── web-server-azure/
+│
+├── 02-terraform-syntax/               ← Sintaxis HCL: variables, outputs, data sources, LB
+│   ├── one-server-aws/                ← recurso basico
+│   ├── one-server-azure/
+│   ├── one-webserver-aws/             ← user_data + security group
+│   ├── one-webserver-with-vars-aws/   ← variables.tf + outputs.tf separados
+│   ├── webserver-cluster-aws/         ← ASG + ALB
+│   └── load-balancer-aws/             ← ALB completo con variables y tfvars
+│
+├── 03-manage-terraform-state/         ← Gestion del estado: workspaces vs file layout
+│   ├── resum.md                       ← resumen del capitulo 3
+│   └── workspaces-example/            ← ejemplo practico de workspaces
+│
+├── 04-reusable-infrastructure/        ← Modulos: infraestructura reutilizable
+│   ├── resum.md                       ← resumen del capitulo 4
+│   └── module-example/
+│       ├── modules/webserver-cluster/ ← el modulo (definicion, como una funcion)
+│       ├── stage/                     ← llama al modulo con config de staging
+│       └── prod/                      ← llama al mismo modulo con config de prod
+│
+├── 05-tips-and-tricks/                ← (pendiente)
+├── 06-managing-secrets/               ← (pendiente)
+├── 07-multiple-providers/             ← (pendiente)
+├── 08-production-grade-infrastructure/← (pendiente)
+├── 09-testing-terraform-code/         ← (pendiente)
+└── 10-terraform-team/                 ← (pendiente)
+```
+
 ## License
 
 This code is released under the MIT License. See LICENSE.txt.
