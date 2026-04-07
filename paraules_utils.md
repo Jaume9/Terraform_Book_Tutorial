@@ -32,6 +32,7 @@ Palabras que no entendia en las reuniones de daily's y en el libro.
 | **VNet** (Virtual Network) | Lo mismo que VPC pero en Azure. Una red privada virtual donde viven las maquinas de Azure. |
 | **Spoke** | En arquitecturas hub-and-spoke, el spoke es una red secundaria que se conecta a una red central (hub). El hub suele tener los servicios compartidos (seguridad, DNS) y los spokes son los entornos (stage, prod, etc.). |
 | **Express Route** | Conexion de red privada y dedicada entre las oficinas de la empresa (on-prem) y Azure. Mas rapido y seguro que ir por internet normal. Es el equivalente de Azure a AWS Direct Connect. |
+| **Tenant** | La instancia de Azure Active Directory (Entra ID) de una organizacion. Es el "contenedor raiz" de todos los usuarios, grupos, aplicaciones y suscripciones de Azure de la empresa. Cada empresa tiene un tenant unico identificado por un `tenant_id`. En SISCLD, el tenant engloba todas las suscripciones de dev, prod, entra y management groups. |
 
 ---
 
