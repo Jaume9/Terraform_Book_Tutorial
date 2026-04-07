@@ -179,3 +179,130 @@ El problema: cuando Terraform reemplaza un recurso, por defecto destruye primero
 | Blue/Green | Cero | Instantaneo (cambiar variable) | Alta |
 
 > **En Azure**: el equivalente del ASG rolling es VMSS con `rolling_upgrade_policy`, o AKS con `upgrade_settings.max_surge` en los node pools.
+
+---
+
+## Capitulo 6 — Gestion de Secretos (Managing Secrets)
+
+**Lo crucial**: nunca meter secretos (passwords, API keys, tokens) en el codigo ni en el state en texto plano. Hay tres niveles de problema: secretos del proveedor (quien lanza Terraform), secretos de los recursos (passwords de BD), y datos sensibles en el state.
+
+### El problema fundamental
+
+```
+❌ MAL — secreto en el codigo:
+variable "db_password" { default = "mi-password-secreto" }
+
+✅ BIEN — secreto viene de fuera del codigo:
+variable "db_password" { sensitive = true }   # sin default, se pasa por env var o secret store
+```
+
+Todo lo que pones en `default` de una variable acaba en git. Todo lo que pasa por Terraform acaba en el state (aunque uses `sensitive = true`, el valor sigue en el `.tfstate`). Por eso hay que:
+1. No meter secretos en el codigo
+2. Encriptar y restringir acceso al state
+
+---
+
+### 3 metodos para pasar secretos a Terraform
+
+| Metodo | Como funciona | Pros | Contras |
+|--------|--------------|------|---------|
+| **Variables de entorno** | `export TF_VAR_db_password="..."` antes del `plan` | Simple, sin dependencias | Manual, no escala en equipo |
+| **Ficheros cifrados** (KMS) | Fichero `.yml` cifrado con AWS KMS/Azure Key Vault, se descifra on-the-fly | Versionable, auditable | Requiere acceso a KMS |
+| **Secret stores** | AWS Secrets Manager / Azure Key Vault — Terraform lo lee con `data` | Rotacion automatica, audit logs, estandar de equipo | Coste (~$0.40/secreto/mes en AWS) |
+
+**El metodo recomendado para equipos es el secret store.** Es el unico que tiene rotacion automatica, audit logs y control de acceso centralizado.
+
+---
+
+### Patron con AWS Secrets Manager
+
+```hcl
+# 1. Ley el secreto del store (guardado previamente como JSON)
+data "aws_secretsmanager_secret_version" "creds" {
+  secret_id = "db-creds"   # nombre del secreto en Secrets Manager
+}
+
+# 2. Parsea el JSON
+locals {
+  db_creds = jsondecode(data.aws_secretsmanager_secret_version.creds.secret_string)
+}
+
+# 3. Usa los valores
+resource "aws_db_instance" "example" {
+  username = local.db_creds.username
+  password = local.db_creds.password
+}
+```
+
+**En Azure el equivalente** es `data "azurerm_key_vault_secret"` con Azure Key Vault. En `iac-azure` los secretos van siempre a Key Vault — el modulo `key-vault-certificate` y `key-vault` gestionan esto.
+
+---
+
+### KMS — Cifrado de ficheros con clave gestionada
+
+Para cuando quieres versionar secretos en git cifrados (no en un secret store), usas KMS:
+
+```hcl
+# Crear la clave maestra (CMK)
+resource "aws_kms_key" "cmk" {
+  deletion_window_in_days = 7
+  policy = data.aws_iam_policy_document.cmk_admin_policy.json
+}
+
+resource "aws_kms_alias" "cmk" {
+  name          = "alias/mis-secretos"
+  target_key_id = aws_kms_key.cmk.id
+}
+```
+
+Luego se cifra el fichero con `aws kms encrypt` y Terraform lo descifra on-the-fly con `aws_kms_secrets`. El fichero cifrado se puede subir a git sin riesgo.
+
+**En Azure el equivalente es Azure Key Vault con Customer Managed Keys (CMK).**
+
+---
+
+### IAM Roles para maquinas (evitar credenciales estaticas)
+
+El problema: el CI/CD necesita credenciales para hacer `terraform apply`. La solucion **mala** es guardar `AWS_ACCESS_KEY_ID` en las variables del CI. La solucion **buena** es un IAM Role o OIDC.
+
+**IAM Role para EC2** — la instancia asume el rol automaticamente, sin claves hardcodeadas:
+
+```hcl
+resource "aws_iam_role" "ci_runner" {
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+
+resource "aws_iam_instance_profile" "ci_runner" {
+  role = aws_iam_role.ci_runner.name
+}
+
+resource "aws_instance" "ci" {
+  iam_instance_profile = aws_iam_instance_profile.ci_runner.name
+}
+```
+
+**OIDC para GitHub Actions** — GitHub obtiene un token JWT firmado y lo intercambia por credenciales temporales de AWS/Azure. Sin credenciales estaticas en ningún lado:
+
+```yaml
+# GitHub Actions workflow
+permissions:
+  id-token: write   # necesario para OIDC
+
+steps:
+  - uses: aws-actions/configure-aws-credentials@v4
+    with:
+      role-to-assume: arn:aws:iam::123456789012:role/github-terraform
+      aws-region: us-east-2
+  # A partir de aqui, todas las llamadas de AWS usan credenciales temporales
+```
+
+**Tabla comparativa de opciones para maquinas:**
+
+| | Credenciales estaticas | IAM Role | OIDC |
+|---|---|---|---|
+| Evita gestion manual | ✗ | ✓ | ✓ |
+| Credenciales temporales | ✗ | ✓ | ✓ |
+| Funciona dentro del cloud | ✗ | ✓ | ✗ |
+| Funciona fuera del cloud (CI externo) | ✓ | ✗ | ✓ |
+
+> **En Azure**: el equivalente de IAM Role es **Managed Identity**. El equivalente de OIDC para GitHub Actions es la **Federated Identity Credential** — exactamente el modulo `federated-identity-credential` de `iac-azure-modules`.
