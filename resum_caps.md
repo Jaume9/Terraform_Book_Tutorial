@@ -109,3 +109,73 @@ module "webserver_prod" {
 **Gotcha importante**: usar `${path.module}/fichero` para referenciar ficheros dentro del modulo, no rutas relativas simples.
 
 **Versionado**: en produccion siempre fijar la version del modulo (`version = "3.14.0"`), nunca usar `latest`.
+
+---
+
+## Capitulo 5 — Tips & Tricks (loops, condicionales, zero-downtime)
+
+**Lo crucial**: Terraform no es un lenguaje de programacion completo, pero tiene herramientas para evitar repeticion y gestionar deployments sin downtime.
+
+### Loops
+
+| Herramienta | Para que sirve | Cuando usarla |
+|-------------|---------------|---------------|
+| `count` | Crear N copias de un recurso | Numero fijo, recursos identicos |
+| `for_each` | Crear recursos por nombre/clave | Recursos con identidad propia (recomendado sobre `count`) |
+| `for` expression | Transformar listas/maps en expressions | Outputs, locals, valores dinamicos |
+| `dynamic` block | Repetir bloques anidados dentro de un recurso | `ingress`, `tag`, `setting`... |
+| `%{ for }` string directive | Loop dentro de un string heredoc | Generar configs de texto dinamicamente |
+
+**Por que `for_each` es mejor que `count`**: `count` identifica recursos por indice numerico. Si borras un elemento del medio de la lista, Terraform recrea todos los posteriores. `for_each` identifica por clave — borrar un elemento solo destruye ese recurso.
+
+```hcl
+# count → recurso es aws_iam_user.example[0], [1], [2]  (fragil)
+# for_each → recurso es aws_iam_user.example["alice"]   (robusto)
+resource "aws_iam_user" "example" {
+  for_each = toset(["alice", "bob", "carol"])
+  name     = each.value
+}
+```
+
+### Condicionales
+
+Terraform no tiene `if/else` directo. Los patrones equivalentes son:
+
+```hcl
+# Crear/no crear un recurso
+count = var.enable_feature ? 1 : 0
+
+# Valor distinto segun condicion
+instance_type = var.environment == "prod" ? "t3.large" : "t3.micro"
+
+# Filtrar que recursos crear con for_each
+for_each = { for k, v in var.users : k => v if v.enabled }
+
+# Condicional dentro de un string (heredoc)
+# %{ if condition }...%{ else }...%{ endif }
+```
+
+**`one()`**: funcion para acceder de forma segura a un recurso condicional (cuando `count` puede ser 0):
+```hcl
+output "ip" {
+  value = one(aws_instance.example[*].public_ip)  # null si count=0
+}
+```
+
+### Zero-Downtime Deployment
+
+El problema: cuando Terraform reemplaza un recurso, por defecto destruye primero y crea despues → downtime.
+
+**Solucion 1 — `create_before_destroy`**: invierte el orden (crea primero, destruye despues). Requiere `name_prefix` en lugar de `name` para evitar conflictos de nombre unico.
+
+**Solucion 2 — Rolling deployment con ASG**: el parametro clave es `min_elb_capacity`. Le dice a Terraform: *"no destruyas las instancias viejas hasta que al menos N instancias nuevas esten healthy en el Load Balancer"*. En ningun momento hay cero instancias activas.
+
+**Solucion 3 — Blue/Green deployment**: dos entornos completos (blue = activo, green = nuevo). Terraform crea green, cambia el DNS, destruye blue. Rollback instantaneo cambiando una variable.
+
+| Solucion | Downtime | Rollback | Complejidad |
+|----------|----------|----------|-------------|
+| `create_before_destroy` | Minimo | No aplica | Baja |
+| Rolling (ASG) | Cero | Dificil | Media |
+| Blue/Green | Cero | Instantaneo (cambiar variable) | Alta |
+
+> **En Azure**: el equivalente del ASG rolling es VMSS con `rolling_upgrade_policy`, o AKS con `upgrade_settings.max_surge` en los node pools.
