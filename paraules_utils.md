@@ -51,6 +51,7 @@ Palabras que no entendia en las reuniones de daily's y en el libro.
 | Termino | Explicacion rapida |
 |---------|-------------------|
 | **State** | Fichero donde Terraform guarda el estado actual de la infraestructura. Lo usa para saber que cambios hay que hacer al ejecutar `terraform plan`. |
+| **Drift** | Diferencia entre lo que dice el codigo Terraform (y su state) y lo que existe realmente en la nube. Ocurre cuando alguien cambia algo manualmente en el portal de Azure/AWS sin tocar el `.tf`. Se detecta con `terraform plan` — si muestra cambios sin que hayas tocado el codigo, hay drift. |
 | **Workspace** | En Terraform, permite tener multiples copias del state (dev, staging, prod) usando el mismo codigo. |
 | **Module** | Carpeta de Terraform reutilizable. Como una funcion: la defines una vez y la llamas con distintos parametros para crear la misma infraestructura en distintos entornos. |
 | **Argumentos** | Los parametros que se pasan a un modulo o recurso de Terraform. Equivalen a los argumentos de una funcion en programacion. |
